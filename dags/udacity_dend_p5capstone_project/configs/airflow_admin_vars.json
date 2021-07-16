@@ -1,0 +1,5 @@
+{
+    "s3_bucket": "udacity-dend-capstone-project",
+    "s3_log_bucket": "udacity-emr-log-bucket",
+    "emr_ec2_key_pair": "ud-dend-p5-capstone-kp"
+}

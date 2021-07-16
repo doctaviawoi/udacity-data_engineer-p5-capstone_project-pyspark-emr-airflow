@@ -1,0 +1,78 @@
+[
+	{
+		"Name": "1_Move raw data and scripts from S3 to HDFS",
+		"ActionOnFailure": "TERMINATE_JOB_FLOW",
+		"HadoopJarStep": {"Jar": "command-runner.jar",
+											"Args": [
+												"s3-dist-cp",
+												"-Dmapreduce.job.reduces=20",
+												"--src=s3://{{ params.s3_bucket }}/",
+												"--dest=/home/hadoop/{{ params.s3_bucket }}"
+												]
+											}
+	},
+	{
+		"Name": "2_Move JARS from S3 to HDFS",
+		"ActionOnFailure": "TERMINATE_JOB_FLOW",
+		"HadoopJarStep": {"Jar": "command-runner.jar",
+											"Args": [
+												"sudo",
+												"aws",
+												"s3",
+												"cp",
+												"s3://{{ params.s3_bucket }}/config_jars",
+												"/usr/lib/spark/jars/",
+												"--recursive"
+												]
+											}
+	},
+	{
+		"Name": "3_Clean and transform datasets in HDFS",
+		"ActionOnFailure": "TERMINATE_JOB_FLOW",
+		"HadoopJarStep": {"Jar": "command-runner.jar",
+											"Args": [
+												"spark-submit",
+												"--deploy-mode",
+												"client",
+												"--packages",
+												"com.crealytics:spark-excel_2.11:0.12.2",
+												"--jars",
+												"/usr/lib/spark/jars/parso-2.0.8.jar,/usr/lib/spark/jars/spark-sas7bdat-2.0.0-s_2.11.jar",
+												"--py-files",
+												"hdfs:///home/hadoop/{{ params.s3_bucket }}/pyspark_functions/helper_functions.zip",
+												"hdfs:///home/hadoop/{{ params.s3_bucket }}/pyspark_functions/etl.py"
+												]}
+	},
+	{
+		"Name": "4_Move transformed data in output_to_s3 folder to S3",
+		"ActionOnFailure": "TERMINATE_JOB_FLOW",
+		"HadoopJarStep": {"Jar": "command-runner.jar",
+											"Args": [
+												"s3-dist-cp",
+												"--src=hdfs:///home/hadoop/{{ params.s3_bucket }}/output_to_s3",
+												"--dest=s3a://{{ params.s3_bucket }}/data/processedData"
+												]}
+	},
+	{
+		"Name": "5_Move transformed supporting data in /data/transformed_parquet folder to S3",
+		"ActionOnFailure": "TERMINATE_JOB_FLOW",
+		"HadoopJarStep": {"Jar": "command-runner.jar",
+											"Args": [
+												"s3-dist-cp",
+												"--src=hdfs:///home/hadoop/{{ params.s3_bucket }}/data/transformed_parquet",
+												"--dest=s3a://{{ params.s3_bucket }}/data/processedSupportingData"
+												]}
+	},
+	{
+		"Name": "6_Delete all objects from s3://udacity-dend-capstone-project/data/rawdata/",
+		"ActionOnFailure": "TERMINATE_JOB_FLOW",
+		"HadoopJarStep": {"Jar": "command-runner.jar",
+											"Args": [
+												"aws",
+												"s3",
+												"rm",
+												"s3://{{ params.s3_bucket }}/data/rawdata",
+												"--recursive"
+												]}
+	}
+]
